@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignments | Student Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="main-header">
+        <a href="/" class="header-title text-decoration-none">Student Management System</a>
+        <nav class="main-nav">
+            <a href="/pages/teacher/dashboard.html">Dashboard</a>
+            <a href="/pages/teacher/students.html">Students</a>
+            <a href="#" data-logout>Logout</a>
+        </nav>
+    </header>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <h4 class="mb-4">Teacher Panel</h4>
+            <a href="/pages/teacher/dashboard.html"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="/pages/teacher/students.html"><i class="bi bi-people"></i> Students</a>
+            <a href="/pages/teacher/assignments.html" class="active"><i class="bi bi-file-earmark-text"></i> Assignments</a>
+            <a href="/pages/teacher/projects.html"><i class="bi bi-folder"></i> Projects</a>
+            <a href="/pages/teacher/attendance.html"><i class="bi bi-calendar-check"></i> Attendance</a>
+            <a href="/pages/teacher/lecture_history.html"><i class="bi bi-clock-history"></i> Lecture History</a>
+            <a href="#" data-logout><i class="bi bi-box-arrow-right"></i> Logout</a>
+        </aside>
+
+        <main class="dashboard-content">
+            <div class="mb-4">
+                <h2>Student Assignments</h2>
+                <p class="text-secondary">Review student submissions and provide feedback.</p>
+            </div>
+
+            <div class="dashboard-card mb-4">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <input type="text" id="assignmentSearch" class="form-control" placeholder="Search by assignment or student name...">
+                    </div>
+                    <div class="col-md-4">
+                        <select id="statusFilter" class="form-select">
+                            <option value="">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="checked">Checked</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <h4 class="mb-3">Assignment Submissions</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Sr. No.</th>
+                                <th>Student</th>
+                                <th>Assignment</th>
+                                <th>Description</th>
+                                <th>File</th>
+                                <th>Submitted On</th>
+                                <th>Status</th>
+                                <th>Review</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assignmentsList">
+                            <tr>
+                                <td colspan="8" class="text-center">Loading assignments...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer class="main-footer">
+        <p class="mb-0">&copy; 2026 Student Management System. All Rights Reserved.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/script.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const assignmentsList = document.getElementById("assignmentsList");
+            const searchInput = document.getElementById("assignmentSearch");
+            const statusFilter = document.getElementById("statusFilter");
+
+            let assignments = [];
+
+            const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;"
+            })[char]);
+
+            const formatDate = value => {
+                if (!value) return "Not Available";
+
+                const date = new Date(value);
+                return isNaN(date) ? value : date.toLocaleDateString("en-GB");
+            };
+
+            const displayAssignments = data => {
+                assignmentsList.innerHTML = "";
+
+                if (!data.length) {
+                    assignmentsList.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center">No assignments found.</td>
+                        </tr>`;
+                    return;
+                }
+
+                data.forEach((assignment, index) => {
+                    const id = assignment._id || assignment.id;
+                    const studentName = assignment.student_name || assignment.name || "Unknown";
+                    const email = assignment.student_email || assignment.email || "";
+                    const title = assignment.title || assignment.assignment_title || "Untitled";
+                    const description = assignment.description || "No description";
+                    const status = assignment.status || "Pending";
+                    const feedback = assignment.feedback || "";
+                    const file = assignment.file_path || assignment.filename || assignment.file || "";
+                    const fileUrl = file.startsWith("http") ? file : file ? "/" + file.replace(/^\/+/, "") : "";
+
+                    const statusClass = {
+                        pending: "bg-warning text-dark",
+                        checked: "bg-info text-dark",
+                        approved: "bg-success",
+                        rejected: "bg-danger"
+                    }[status.toLowerCase()] || "bg-secondary";
+
+                    const row = document.createElement("tr");
+
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>
+                            <strong>${escapeHTML(studentName)}</strong>
+                            <small class="d-block text-secondary">${escapeHTML(email)}</small>
+                        </td>
+                        <td>${escapeHTML(title)}</td>
+                        <td>${escapeHTML(description)}</td>
+                        <td>
+                            ${fileUrl
+                                ? `<a href="${escapeHTML(fileUrl)}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-file-earmark-arrow-down"></i> View File</a>`
+                                : "No File"}
+                        </td>
+                        <td>${escapeHTML(formatDate(assignment.submitted_at || assignment.created_at))}</td>
+                        <td>
+                            <span class="badge ${statusClass}">${escapeHTML(status)}</span>
+                        </td>
+                        <td style="min-width:220px">
+                            <form class="reviewForm" data-id="${escapeHTML(id)}">
+                                <select name="status" class="form-select form-select-sm mb-2" required>
+                                    ${["Pending", "Checked", "Approved", "Rejected"].map(option =>
+                                        `<option value="${option}" ${status.toLowerCase() === option.toLowerCase() ? "selected" : ""}>${option}</option>`
+                                    ).join("")}
+                                </select>
+                                <textarea name="feedback" class="form-control form-control-sm mb-2" rows="2" placeholder="Enter feedback">${escapeHTML(feedback)}</textarea>
+                                <button type="submit" class="btn btn-sm btn-primary w-100">
+                                    <i class="bi bi-save"></i> Save Review
+                                </button>
+                            </form>
+                        </td>
+                    `;
+
+                    assignmentsList.appendChild(row);
+                });
+
+                document.querySelectorAll(".reviewForm").forEach(form => {
+                    form.addEventListener("submit", async event => {
+                        event.preventDefault();
+
+                        const id = form.dataset.id;
+                        const button = form.querySelector("button");
+                        const formData = new FormData(form);
+
+                        button.disabled = true;
+
+                        try {
+                            const response = await fetch(`/api/teacher/assignment/update/${id}`, {
+                                method: "POST",
+                                credentials: "same-origin",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({
+                                    status: formData.get("status"),
+                                    feedback: formData.get("feedback")
+                                })
+                            });
+
+                            const result = await response.json();
+
+                            if (!response.ok) {
+                                throw new Error(result.message || "Unable to save review.");
+                            }
+
+                            const assignment = assignments.find(item =>
+                                String(item._id || item.id) === id
+                            );
+
+                            if (assignment) {
+                                assignment.status = formData.get("status");
+                                assignment.feedback = formData.get("feedback");
+                            }
+
+                            filterAssignments();
+                            alert(result.message || "Review saved successfully.");
+                        } catch (error) {
+                            alert(error.message);
+                            button.disabled = false;
+                        }
+                    });
+                });
+            };
+
+            const filterAssignments = () => {
+                const search = searchInput.value.toLowerCase();
+                const selectedStatus = statusFilter.value.toLowerCase();
+
+                const filtered = assignments.filter(assignment => {
+                    const text = [
+                        assignment.student_name,
+                        assignment.student_email,
+                        assignment.name,
+                        assignment.email,
+                        assignment.title,
+                        assignment.assignment_title,
+                        assignment.description
+                    ].join(" ").toLowerCase();
+
+                    const status = (assignment.status || "pending").toLowerCase();
+
+                    return text.includes(search) &&
+                        (!selectedStatus || status === selectedStatus);
+                });
+
+                displayAssignments(filtered);
+            };
+
+            try {
+                const response = await fetch("/api/teacher/assignments", {
+                    credentials: "same-origin"
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || "Unable to load assignments.");
+                }
+
+                assignments = data.assignments || [];
+                displayAssignments(assignments);
+            } catch (error) {
+                assignmentsList.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-danger">${escapeHTML(error.message)}</td>
+                    </tr>`;
+            }
+
+            searchInput.addEventListener("input", filterAssignments);
+            statusFilter.addEventListener("change", filterAssignments);
+        });
+    </script>
+</body>
+</html>

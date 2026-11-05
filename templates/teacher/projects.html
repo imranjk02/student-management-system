@@ -1,0 +1,275 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projects | Student Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="main-header">
+        <a href="/" class="header-title text-decoration-none">Student Management System</a>
+        <nav class="main-nav">
+            <a href="/pages/teacher/dashboard.html">Dashboard</a>
+            <a href="/pages/teacher/students.html">Students</a>
+            <a href="#" data-logout>Logout</a>
+        </nav>
+    </header>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <h4 class="mb-4">Teacher Panel</h4>
+            <a href="/pages/teacher/dashboard.html"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="/pages/teacher/students.html"><i class="bi bi-people"></i> Students</a>
+            <a href="/pages/teacher/assignments.html"><i class="bi bi-file-earmark-text"></i> Assignments</a>
+            <a href="/pages/teacher/projects.html" class="active"><i class="bi bi-folder"></i> Projects</a>
+            <a href="/pages/teacher/attendance.html"><i class="bi bi-calendar-check"></i> Attendance</a>
+            <a href="/pages/teacher/lecture_history.html"><i class="bi bi-clock-history"></i> Lecture History</a>
+            <a href="#" data-logout><i class="bi bi-box-arrow-right"></i> Logout</a>
+        </aside>
+
+        <main class="dashboard-content">
+            <div class="mb-4">
+                <h2>Student Projects</h2>
+                <p class="text-secondary">Review student projects and provide feedback.</p>
+            </div>
+
+            <div class="dashboard-card mb-4">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <input type="text" id="projectSearch" class="form-control" placeholder="Search by project or student name...">
+                    </div>
+                    <div class="col-md-4">
+                        <select id="statusFilter" class="form-select">
+                            <option value="">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="checked">Checked</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <h4 class="mb-3">Project Submissions</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="projectsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Sr. No.</th>
+                                <th>Student</th>
+                                <th>Project</th>
+                                <th>Description</th>
+                                <th>File</th>
+                                <th>Submitted On</th>
+                                <th>Status</th>
+                                <th>Review</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectsList">
+                            <tr>
+                                <td colspan="8" class="text-center">Loading projects...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer class="main-footer">
+        <p class="mb-0">&copy; 2026 Student Management System. All Rights Reserved.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/script.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const projectsList = document.getElementById("projectsList");
+            const searchInput = document.getElementById("projectSearch");
+            const statusFilter = document.getElementById("statusFilter");
+            let projects = [];
+
+            const escapeHTML = value => {
+                return String(value ?? "").replace(/[&<>"']/g, char => ({
+                    "&": "&amp;",
+                    "<": "&lt;",
+                    ">": "&gt;",
+                    '"': "&quot;",
+                    "'": "&#39;"
+                })[char]);
+            };
+
+            const formatDate = value => {
+                if (!value) return "Not Available";
+
+                const date = new Date(value);
+                return isNaN(date) ? value : date.toLocaleDateString("en-GB");
+            };
+
+            const displayProjects = data => {
+                projectsList.innerHTML = "";
+
+                if (!data.length) {
+                    projectsList.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center">No project submissions found.</td>
+                        </tr>`;
+                    return;
+                }
+
+                data.forEach((project, index) => {
+                    const id = project._id || project.id;
+                    const studentName = project.student_name || project.name || "Unknown";
+                    const email = project.student_email || project.email || "";
+                    const title = project.title || project.project_name || "Untitled";
+                    const description = project.description || "No description";
+                    const status = (project.status || "Pending").toLowerCase();
+                    const feedback = project.feedback || "";
+                    const file = project.file_path || project.filename || project.file || "";
+                    const fileUrl = file.startsWith("http") ? file : file ? "/" + file.replace(/^\/+/, "") : "";
+
+                    const badge = {
+                        pending: "bg-warning text-dark",
+                        checked: "bg-info text-dark",
+                        approved: "bg-success",
+                        rejected: "bg-danger"
+                    }[status] || "bg-secondary";
+
+                    const row = document.createElement("tr");
+
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>
+                            <strong>${escapeHTML(studentName)}</strong>
+                            <small class="d-block text-secondary">${escapeHTML(email)}</small>
+                        </td>
+                        <td>${escapeHTML(title)}</td>
+                        <td>${escapeHTML(description)}</td>
+                        <td>
+                            ${fileUrl
+                                ? `<a href="${escapeHTML(fileUrl)}" target="_blank" class="btn btn-sm btn-outline-primary">View File</a>`
+                                : "No File"}
+                        </td>
+                        <td>${escapeHTML(formatDate(project.submitted_at || project.created_at))}</td>
+                        <td><span class="badge ${badge}">${escapeHTML(status.charAt(0).toUpperCase() + status.slice(1))}</span></td>
+                        <td style="min-width:220px">
+                            <form class="reviewForm" data-id="${escapeHTML(id)}">
+                                <select name="status" class="form-select form-select-sm mb-2" required>
+                                    <option value="Pending" ${status === "pending" ? "selected" : ""}>Pending</option>
+                                    <option value="Checked" ${status === "checked" ? "selected" : ""}>Checked</option>
+                                    <option value="Approved" ${status === "approved" ? "selected" : ""}>Approved</option>
+                                    <option value="Rejected" ${status === "rejected" ? "selected" : ""}>Rejected</option>
+                                </select>
+                                <textarea name="feedback" class="form-control form-control-sm mb-2" rows="2" placeholder="Enter feedback">${escapeHTML(feedback)}</textarea>
+                                <button type="submit" class="btn btn-sm btn-primary w-100">
+                                    <i class="bi bi-save"></i> Save Review
+                                </button>
+                            </form>
+                        </td>
+                    `;
+
+                    projectsList.appendChild(row);
+                });
+
+                document.querySelectorAll(".reviewForm").forEach(form => {
+                    form.addEventListener("submit", async event => {
+                        event.preventDefault();
+
+                        const id = form.dataset.id;
+                        const button = form.querySelector("button");
+                        button.disabled = true;
+
+                        try {
+                            const formData = new FormData(form);
+
+                            const response = await fetch(`/api/teacher/project/update/${id}`, {
+                                method: "POST",
+                                credentials: "same-origin",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({
+                                    status: formData.get("status"),
+                                    feedback: formData.get("feedback")
+                                })
+                            });
+
+                            const result = await response.json();
+
+                            if (!response.ok) {
+                                throw new Error(result.message || "Unable to save review.");
+                            }
+
+                            const project = projects.find(item => String(item._id || item.id) === id);
+
+                            if (project) {
+                                project.status = formData.get("status");
+                                project.feedback = formData.get("feedback");
+                            }
+
+                            filterProjects();
+                            alert("Project review saved successfully.");
+                        } catch (error) {
+                            alert(error.message);
+                            button.disabled = false;
+                        }
+                    });
+                });
+            };
+
+            const filterProjects = () => {
+                const search = searchInput.value.toLowerCase();
+                const selectedStatus = statusFilter.value.toLowerCase();
+
+                const filtered = projects.filter(project => {
+                    const text = [
+                        project.student_name,
+                        project.student_email,
+                        project.name,
+                        project.email,
+                        project.title,
+                        project.project_name,
+                        project.description
+                    ].join(" ").toLowerCase();
+
+                    const status = (project.status || "pending").toLowerCase();
+
+                    return text.includes(search) &&
+                        (!selectedStatus || status === selectedStatus);
+                });
+
+                displayProjects(filtered);
+            };
+
+            try {
+                const response = await fetch("/api/teacher/projects", {
+                    credentials: "same-origin"
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || "Unable to load projects.");
+                }
+
+                projects = data.projects || [];
+                displayProjects(projects);
+            } catch (error) {
+                projectsList.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-danger">${escapeHTML(error.message)}</td>
+                    </tr>`;
+            }
+
+            searchInput.addEventListener("input", filterProjects);
+            statusFilter.addEventListener("change", filterProjects);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance | Student Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="main-header">
+        <a href="/" class="header-title text-decoration-none">Student Management System</a>
+        <nav class="main-nav">
+            <a href="/pages/teacher/dashboard.html">Dashboard</a>
+            <a href="/pages/teacher/students.html">Students</a>
+            <a href="#" data-logout>Logout</a>
+        </nav>
+    </header>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <h4 class="mb-4">Teacher Panel</h4>
+            <a href="/pages/teacher/dashboard.html"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a href="/pages/teacher/students.html"><i class="bi bi-people"></i> Students</a>
+            <a href="/pages/teacher/assignments.html"><i class="bi bi-file-earmark-text"></i> Assignments</a>
+            <a href="/pages/teacher/projects.html"><i class="bi bi-folder"></i> Projects</a>
+            <a href="/pages/teacher/attendance.html" class="active"><i class="bi bi-calendar-check"></i> Attendance</a>
+            <a href="/pages/teacher/lecture_history.html"><i class="bi bi-clock-history"></i> Lecture History</a>
+            <a href="#" data-logout><i class="bi bi-box-arrow-right"></i> Logout</a>
+        </aside>
+
+        <main class="dashboard-content">
+            <div class="mb-4">
+                <h2>Attendance Management</h2>
+                <p class="text-secondary">Create lectures and manage student attendance.</p>
+            </div>
+
+            <div class="dashboard-card mb-4">
+                <h4 class="mb-3"><i class="bi bi-plus-circle text-primary"></i> Create New Lecture</h4>
+
+                <form id="createLectureForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="title">Lecture Title</label>
+                            <input type="text" id="title" name="title" class="form-control" placeholder="Enter lecture title" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="date">Lecture Date</label>
+                            <input type="date" id="date" name="date" class="form-control" required>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-plus-lg"></i> Create
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="dashboard-card">
+                <h4 class="mb-3"><i class="bi bi-calendar-check text-success"></i> Mark Student Attendance</h4>
+
+                <form id="attendanceForm">
+                    <div class="mb-4">
+                        <label for="lecture_id" class="form-label">Select Lecture</label>
+                        <select name="lecture_id" id="lecture_id" class="form-select" required>
+                            <option value="">Choose Lecture</option>
+                        </select>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Sr. No.</th>
+                                    <th>Student Name</th>
+                                    <th>Email</th>
+                                    <th>Attendance</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsList">
+                                <tr>
+                                    <td colspan="4" class="text-center">Loading students...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save"></i> Save Attendance
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <footer class="main-footer">
+        <p class="mb-0">&copy; 2026 Student Management System. All Rights Reserved.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/script.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const createForm = document.getElementById("createLectureForm");
+            const attendanceForm = document.getElementById("attendanceForm");
+            const lectureSelect = document.getElementById("lecture_id");
+            const studentsList = document.getElementById("studentsList");
+
+            let students = [];
+
+            const apiRequest = async (url, options = {}) => {
+                const response = await fetch(url, {
+                    credentials: "same-origin",
+                    ...options,
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...options.headers
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || "Something went wrong.");
+                }
+
+                return data;
+            };
+
+            const loadData = async () => {
+                const data = await apiRequest("/api/teacher/attendance");
+
+                students = data.students || [];
+                const lectures = data.lectures || [];
+
+                lectureSelect.innerHTML = '<option value="">Choose Lecture</option>';
+
+                lectures.forEach(lecture => {
+                    const option = document.createElement("option");
+                    option.value = lecture.id;
+                    option.textContent = `${lecture.title} - ${lecture.date}`;
+                    lectureSelect.appendChild(option);
+                });
+
+                studentsList.innerHTML = "";
+
+                if (!students.length) {
+                    studentsList.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center">No registered students found.</td>
+                        </tr>`;
+                    return;
+                }
+
+                students.forEach((student, index) => {
+                    const row = document.createElement("tr");
+                    const studentId = student._id;
+
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td><strong></strong></td>
+                        <td class="student-email"></td>
+                        <td style="min-width:180px">
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio"
+                                        name="status_${index}" value="Present"
+                                        id="present_${index}" checked>
+                                    <label class="form-check-label text-success"
+                                        for="present_${index}">Present</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio"
+                                        name="status_${index}" value="Absent"
+                                        id="absent_${index}">
+                                    <label class="form-check-label text-danger"
+                                        for="absent_${index}">Absent</label>
+                                </div>
+                            </div>
+                        </td>
+                    `;
+
+                    row.querySelector("strong").textContent = student.name || "Unknown";
+                    row.querySelector(".student-email").textContent = student.email || "Not Available";
+                    row.dataset.studentId = studentId;
+
+                    studentsList.appendChild(row);
+                });
+            };
+
+            createForm.addEventListener("submit", async event => {
+                event.preventDefault();
+
+                const button = createForm.querySelector("button");
+                button.disabled = true;
+
+                try {
+                    const data = await apiRequest("/api/teacher/attendance", {
+                        method: "POST",
+                        body: JSON.stringify({
+                            action: "create_lecture",
+                            title: createForm.title.value.trim(),
+                            date: createForm.date.value
+                        })
+                    });
+
+                    alert(data.message || "Lecture created successfully.");
+                    createForm.reset();
+                    await loadData();
+                } catch (error) {
+                    alert(error.message);
+                } finally {
+                    button.disabled = false;
+                }
+            });
+
+            attendanceForm.addEventListener("submit", async event => {
+                event.preventDefault();
+
+                if (!lectureSelect.value) {
+                    alert("Please select a lecture.");
+                    return;
+                }
+
+                const button = attendanceForm.querySelector("button");
+                button.disabled = true;
+
+                const attendance = students.map((student, index) => {
+                    const selected = document.querySelector(
+                        `input[name="status_${index}"]:checked`
+                    );
+
+                    return {
+                        student_id: student.id,
+                        status: selected ? selected.value : "Absent"
+                    };
+                });
+
+                try {
+                    const data = await apiRequest("/api/teacher/attendance", {
+                        method: "POST",
+                        body: JSON.stringify({
+                            action: "save_attendance",
+                            lecture_id: lectureSelect.value,
+                            attendance: attendance
+                        })
+                    });
+
+                    alert(data.message || "Attendance saved successfully.");
+                } catch (error) {
+                    alert(error.message);
+                } finally {
+                    button.disabled = false;
+                }
+            });
+
+            try {
+                await loadData();
+            } catch (error) {
+                studentsList.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center text-danger">
+                            ${error.message}
+                        </td>
+                    </tr>`;
+            }
+        });
+    </script>
+</body>
+</html>
