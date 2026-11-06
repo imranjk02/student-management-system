@@ -19,6 +19,14 @@ document.addEventListener("DOMContentLoaded", () => {
             ...options
         });
 
+        const contentType = response.headers.get("content-type");
+
+        if (!contentType || !contentType.includes("application/json")) {
+            const text = await response.text();
+            console.error("Expected JSON but received:", text);
+            throw new Error("API returned HTML instead of JSON. Check API URL and Flask route.");
+        }
+
         const data = await response.json();
 
         if (!response.ok) {
